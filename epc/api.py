@@ -211,12 +211,36 @@ def stop_traffic(
     return TrafficStopResponse(status="traffic_stopped", ue_id=ue_id, bearer_id=bearer_id)
 
 
+@router.delete("/ues/{ue_id}/traffic", response_model=StatusResponse)
+def stop_all_traffic_for_ue(
+    ue_id: int,
+    repo: Annotated[EPCRepository, Depends(get_repo)],
+):
+    try:
+        state = repo.get_ue(ue_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    tm = get_traffic_manager(repo)
+    for bearer_id in state.bearers:
+        tm.stop(ue_id, bearer_id)
+    return StatusResponse(status="traffic_stopped")
+
+
+_UNIT_DIVISORS = {"bps": 1, "kbps": 1_000, "Mbps": 1_000_000}
+
+
 @router.get("/ues/{ue_id}/bearers/{bearer_id}/traffic", response_model=TrafficStatsResponse)
 def get_traffic_stats(
     ue_id: int,
     bearer_id: int,
     repo: Annotated[EPCRepository, Depends(get_repo)],
+    unit: str | None = None,
 ):
+    if unit is not None and unit not in _UNIT_DIVISORS:
+        raise HTTPException(status_code=422, detail=f"Invalid unit '{unit}'. Use: bps, kbps, Mbps")
+    resolved_unit = unit or "bps"
+    divisor = _UNIT_DIVISORS[resolved_unit]
+
     try:
         state = repo.get_ue(ue_id)
     except ValueError as e:
@@ -231,12 +255,13 @@ def get_traffic_stats(
             tx_bps=0,
             rx_bps=0,
             duration=0,
+            unit=resolved_unit,
         )
     tm = get_traffic_manager(repo)
     end_ts = time.time() if (stats.start_ts and tm.is_running(ue_id, bearer_id)) else stats.last_update_ts
     duration = (end_ts - stats.start_ts) if (stats.start_ts and end_ts is not None) else 0
-    tx_bps = int(stats.bytes_tx * 8 / duration) if duration > 0 else 0
-    rx_bps = int(stats.bytes_rx * 8 / duration) if duration > 0 else 0
+    tx_bps = int(stats.bytes_tx * 8 / duration / divisor) if duration > 0 else 0
+    rx_bps = int(stats.bytes_rx * 8 / duration / divisor) if duration > 0 else 0
     return TrafficStatsResponse(
         ue_id=ue_id,
         bearer_id=bearer_id,
@@ -245,6 +270,7 @@ def get_traffic_stats(
         tx_bps=tx_bps,
         rx_bps=rx_bps,
         duration=duration,
+        unit=resolved_unit,
     )
 
 
