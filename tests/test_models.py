@@ -132,6 +132,22 @@ class TestStartTrafficRequest:
         with pytest.raises(ValidationError):
             StartTrafficRequest(protocol="tcp", Mbps=0.0)
 
+    def test_negative_kbps_raises(self):
+        with pytest.raises(ValidationError):
+            StartTrafficRequest(protocol="tcp", kbps=-1.0)
+
+    def test_zero_kbps_raises(self):
+        with pytest.raises(ValidationError):
+            StartTrafficRequest(protocol="tcp", kbps=0.0)
+
+    def test_negative_bps_raises(self):
+        with pytest.raises(ValidationError):
+            StartTrafficRequest(protocol="tcp", bps=-1)
+
+    def test_zero_bps_raises(self):
+        with pytest.raises(ValidationError):
+            StartTrafficRequest(protocol="tcp", bps=0)
+
     def test_valid_direction_dl(self):
         r = StartTrafficRequest(protocol="tcp", Mbps=10.0, direction="DL")
         assert r.direction == "DL"

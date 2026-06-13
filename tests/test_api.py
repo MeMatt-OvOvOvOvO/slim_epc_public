@@ -220,6 +220,31 @@ class TestStartTraffic:
         r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "Mbps": -1.0})
         assert r.status_code == 422
 
+    def test_start_traffic_zero_mbps_returns_422(self, client):
+        client.post("/ues", json={"ue_id": 10})
+        r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 0.0})
+        assert r.status_code == 422
+
+    def test_start_traffic_negative_kbps_returns_422(self, client):
+        client.post("/ues", json={"ue_id": 10})
+        r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "kbps": -1.0})
+        assert r.status_code == 422
+
+    def test_start_traffic_zero_kbps_returns_422(self, client):
+        client.post("/ues", json={"ue_id": 10})
+        r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "kbps": 0.0})
+        assert r.status_code == 422
+
+    def test_start_traffic_negative_bps_returns_422(self, client):
+        client.post("/ues", json={"ue_id": 10})
+        r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "bps": -1})
+        assert r.status_code == 422
+
+    def test_start_traffic_zero_bps_returns_422(self, client):
+        client.post("/ues", json={"ue_id": 10})
+        r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "bps": 0})
+        assert r.status_code == 422
+
     def test_start_traffic_boundary_100mbps(self, client):
         """Dokładnie 100 Mbps mieści się w dozwolonym zakresie."""
         client.post("/ues", json={"ue_id": 10})
@@ -230,6 +255,12 @@ class TestStartTraffic:
         """100.1 Mbps przekracza limit — powinno być odrzucone (DEF-RUL-003)."""
         client.post("/ues", json={"ue_id": 10})
         r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 100.1})
+        assert r.status_code == 422
+
+    def test_start_traffic_101mbps_returns_422(self, client):
+        """101 Mbps przekracza limit — powinno być odrzucone (DEF-TRF-003)."""
+        client.post("/ues", json={"ue_id": 57})
+        r = client.post("/ues/57/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 101})
         assert r.status_code == 422
 
     def test_start_traffic_using_kbps(self, client):
