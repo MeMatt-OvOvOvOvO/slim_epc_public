@@ -47,7 +47,7 @@ class StartTrafficRequest(BaseModel):
     Mbps: float | None = Field(default=None, gt=0, le=100)
     kbps: float | None = Field(default=None, gt=0, le=100_000)
     bps: float | None = Field(default=None, gt=0, le=100_000_000)
-    direction: str | None = Field(default=None, pattern="^(DL|UL)$")
+    direction: str | None = Field(default=None, pattern="^DL$")
 
     @model_validator(mode="after")
     def exactly_one_throughput(self):

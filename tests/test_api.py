@@ -209,6 +209,12 @@ class TestStartTraffic:
         r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "ftp", "Mbps": 10.0})
         assert r.status_code == 422
 
+    def test_start_traffic_direction_ul_returns_422(self, client):
+        """Kierunek UL powinien być odrzucony — dozwolony tylko DL (DEF-TRF-004)."""
+        client.post("/ues", json={"ue_id": 58})
+        r = client.post("/ues/58/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 1, "direction": "UL"})
+        assert r.status_code == 422
+
     def test_start_traffic_no_throughput_field_returns_422(self, client):
         client.post("/ues", json={"ue_id": 10})
         r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp"})

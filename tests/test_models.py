@@ -152,9 +152,10 @@ class TestStartTrafficRequest:
         r = StartTrafficRequest(protocol="tcp", Mbps=10.0, direction="DL")
         assert r.direction == "DL"
 
-    def test_valid_direction_ul(self):
-        r = StartTrafficRequest(protocol="tcp", Mbps=10.0, direction="UL")
-        assert r.direction == "UL"
+    def test_direction_ul_raises(self):
+        """Kierunek UL powinien być odrzucony — dozwolony tylko DL (DEF-TRF-004)."""
+        with pytest.raises(ValidationError):
+            StartTrafficRequest(protocol="tcp", Mbps=10.0, direction="UL")
 
     def test_invalid_direction_raises(self):
         """Nieprawidłowa wartość direction powinna być odrzucona (TC-008)."""
