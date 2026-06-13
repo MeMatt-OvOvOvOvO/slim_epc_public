@@ -38,13 +38,22 @@ class TestAttachUE:
         r = client.post("/ues", json={"ue_id": 10})
         assert r.status_code == 400
 
-    def test_attach_ue_id_zero_returns_422(self, client):
+    def test_attach_ue_id_zero_returns_200(self, client):
         r = client.post("/ues", json={"ue_id": 0})
+        assert r.status_code == 200
+        assert r.json() == {"status": "attached", "ue_id": 0}
+
+    def test_attach_ue_id_negative_returns_422(self, client):
+        r = client.post("/ues", json={"ue_id": -1})
         assert r.status_code == 422
 
     def test_attach_ue_id_101_returns_422(self, client):
         r = client.post("/ues", json={"ue_id": 101})
         assert r.status_code == 422
+
+    def test_attach_ue_id_boundary_0(self, client):
+        r = client.post("/ues", json={"ue_id": 0})
+        assert r.status_code == 200
 
     def test_attach_ue_id_boundary_1(self, client):
         r = client.post("/ues", json={"ue_id": 1})

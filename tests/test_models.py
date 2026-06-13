@@ -59,6 +59,10 @@ class TestBearerConfig:
 
 class TestAttachUERequest:
     def test_valid_ue_id_min(self):
+        r = AttachUERequest(ue_id=0)
+        assert r.ue_id == 0
+
+    def test_valid_ue_id_one(self):
         r = AttachUERequest(ue_id=1)
         assert r.ue_id == 1
 
@@ -66,9 +70,9 @@ class TestAttachUERequest:
         r = AttachUERequest(ue_id=100)
         assert r.ue_id == 100
 
-    def test_invalid_ue_id_zero(self):
+    def test_invalid_ue_id_negative(self):
         with pytest.raises(ValidationError):
-            AttachUERequest(ue_id=0)
+            AttachUERequest(ue_id=-1)
 
     def test_invalid_ue_id_101(self):
         with pytest.raises(ValidationError):
@@ -175,13 +179,21 @@ class TestUEState:
         assert s.bearers == {}
         assert s.stats == {}
 
-    def test_valid_ue_id(self):
+    def test_valid_ue_id_zero(self):
+        s = UEState(ue_id=0)
+        assert s.ue_id == 0
+
+    def test_valid_ue_id_max(self):
         s = UEState(ue_id=100)
         assert s.ue_id == 100
 
-    def test_invalid_ue_id(self):
+    def test_invalid_ue_id_negative(self):
         with pytest.raises(ValidationError):
-            UEState(ue_id=0)
+            UEState(ue_id=-1)
+
+    def test_invalid_ue_id_above_max(self):
+        with pytest.raises(ValidationError):
+            UEState(ue_id=101)
 
     def test_bearers_none_converted_to_empty_dict(self):
         s = UEState(ue_id=1, bearers=None)
