@@ -59,6 +59,10 @@ class TestBearerConfig:
 
 class TestAttachUERequest:
     def test_valid_ue_id_min(self):
+        r = AttachUERequest(ue_id=0)
+        assert r.ue_id == 0
+
+    def test_valid_ue_id_one(self):
         r = AttachUERequest(ue_id=1)
         assert r.ue_id == 1
 
@@ -66,9 +70,9 @@ class TestAttachUERequest:
         r = AttachUERequest(ue_id=100)
         assert r.ue_id == 100
 
-    def test_invalid_ue_id_zero(self):
+    def test_invalid_ue_id_negative(self):
         with pytest.raises(ValidationError):
-            AttachUERequest(ue_id=0)
+            AttachUERequest(ue_id=-1)
 
     def test_invalid_ue_id_101(self):
         with pytest.raises(ValidationError):
@@ -128,13 +132,30 @@ class TestStartTrafficRequest:
         with pytest.raises(ValidationError):
             StartTrafficRequest(protocol="tcp", Mbps=0.0)
 
+    def test_negative_kbps_raises(self):
+        with pytest.raises(ValidationError):
+            StartTrafficRequest(protocol="tcp", kbps=-1.0)
+
+    def test_zero_kbps_raises(self):
+        with pytest.raises(ValidationError):
+            StartTrafficRequest(protocol="tcp", kbps=0.0)
+
+    def test_negative_bps_raises(self):
+        with pytest.raises(ValidationError):
+            StartTrafficRequest(protocol="tcp", bps=-1)
+
+    def test_zero_bps_raises(self):
+        with pytest.raises(ValidationError):
+            StartTrafficRequest(protocol="tcp", bps=0)
+
     def test_valid_direction_dl(self):
         r = StartTrafficRequest(protocol="tcp", Mbps=10.0, direction="DL")
         assert r.direction == "DL"
 
-    def test_valid_direction_ul(self):
-        r = StartTrafficRequest(protocol="tcp", Mbps=10.0, direction="UL")
-        assert r.direction == "UL"
+    def test_direction_ul_raises(self):
+        """Kierunek UL powinien być odrzucony — dozwolony tylko DL (DEF-TRF-004)."""
+        with pytest.raises(ValidationError):
+            StartTrafficRequest(protocol="tcp", Mbps=10.0, direction="UL")
 
     def test_invalid_direction_raises(self):
         """Nieprawidłowa wartość direction powinna być odrzucona (TC-008)."""
@@ -175,13 +196,21 @@ class TestUEState:
         assert s.bearers == {}
         assert s.stats == {}
 
-    def test_valid_ue_id(self):
+    def test_valid_ue_id_zero(self):
+        s = UEState(ue_id=0)
+        assert s.ue_id == 0
+
+    def test_valid_ue_id_max(self):
         s = UEState(ue_id=100)
         assert s.ue_id == 100
 
-    def test_invalid_ue_id(self):
+    def test_invalid_ue_id_negative(self):
         with pytest.raises(ValidationError):
-            UEState(ue_id=0)
+            UEState(ue_id=-1)
+
+    def test_invalid_ue_id_above_max(self):
+        with pytest.raises(ValidationError):
+            UEState(ue_id=101)
 
     def test_bearers_none_converted_to_empty_dict(self):
         s = UEState(ue_id=1, bearers=None)

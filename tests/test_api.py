@@ -38,13 +38,22 @@ class TestAttachUE:
         r = client.post("/ues", json={"ue_id": 10})
         assert r.status_code == 400
 
-    def test_attach_ue_id_zero_returns_422(self, client):
+    def test_attach_ue_id_zero_returns_200(self, client):
         r = client.post("/ues", json={"ue_id": 0})
+        assert r.status_code == 200
+        assert r.json() == {"status": "attached", "ue_id": 0}
+
+    def test_attach_ue_id_negative_returns_422(self, client):
+        r = client.post("/ues", json={"ue_id": -1})
         assert r.status_code == 422
 
     def test_attach_ue_id_101_returns_422(self, client):
         r = client.post("/ues", json={"ue_id": 101})
         assert r.status_code == 422
+
+    def test_attach_ue_id_boundary_0(self, client):
+        r = client.post("/ues", json={"ue_id": 0})
+        assert r.status_code == 200
 
     def test_attach_ue_id_boundary_1(self, client):
         r = client.post("/ues", json={"ue_id": 1})
@@ -200,6 +209,12 @@ class TestStartTraffic:
         r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "ftp", "Mbps": 10.0})
         assert r.status_code == 422
 
+    def test_start_traffic_direction_ul_returns_422(self, client):
+        """Kierunek UL powinien być odrzucony — dozwolony tylko DL (DEF-TRF-004)."""
+        client.post("/ues", json={"ue_id": 58})
+        r = client.post("/ues/58/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 1, "direction": "UL"})
+        assert r.status_code == 422
+
     def test_start_traffic_no_throughput_field_returns_422(self, client):
         client.post("/ues", json={"ue_id": 10})
         r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp"})
@@ -209,6 +224,31 @@ class TestStartTraffic:
         """Ujemna wartość Mbps powinna być odrzucona (DEF-RUL-003)."""
         client.post("/ues", json={"ue_id": 10})
         r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "Mbps": -1.0})
+        assert r.status_code == 422
+
+    def test_start_traffic_zero_mbps_returns_422(self, client):
+        client.post("/ues", json={"ue_id": 10})
+        r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 0.0})
+        assert r.status_code == 422
+
+    def test_start_traffic_negative_kbps_returns_422(self, client):
+        client.post("/ues", json={"ue_id": 10})
+        r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "kbps": -1.0})
+        assert r.status_code == 422
+
+    def test_start_traffic_zero_kbps_returns_422(self, client):
+        client.post("/ues", json={"ue_id": 10})
+        r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "kbps": 0.0})
+        assert r.status_code == 422
+
+    def test_start_traffic_negative_bps_returns_422(self, client):
+        client.post("/ues", json={"ue_id": 10})
+        r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "bps": -1})
+        assert r.status_code == 422
+
+    def test_start_traffic_zero_bps_returns_422(self, client):
+        client.post("/ues", json={"ue_id": 10})
+        r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "bps": 0})
         assert r.status_code == 422
 
     def test_start_traffic_boundary_100mbps(self, client):
@@ -221,6 +261,12 @@ class TestStartTraffic:
         """100.1 Mbps przekracza limit — powinno być odrzucone (DEF-RUL-003)."""
         client.post("/ues", json={"ue_id": 10})
         r = client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 100.1})
+        assert r.status_code == 422
+
+    def test_start_traffic_101mbps_returns_422(self, client):
+        """101 Mbps przekracza limit — powinno być odrzucone (DEF-TRF-003)."""
+        client.post("/ues", json={"ue_id": 57})
+        r = client.post("/ues/57/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 101})
         assert r.status_code == 422
 
     def test_start_traffic_using_kbps(self, client):
@@ -242,11 +288,19 @@ class TestStopTraffic:
         assert r.status_code == 200
         assert r.json()["status"] == "traffic_stopped"
 
-    def test_stop_traffic_not_running_does_not_raise(self, client):
-        """Zatrzymanie ruchu, który nie jest aktywny, powinno zwrócić 200."""
+    def test_stop_traffic_not_running_returns_400(self, client):
+        """Zatrzymanie ruchu, który nie jest aktywny, powinno zwrócić 400 (DEF-TRF-001)."""
         client.post("/ues", json={"ue_id": 10})
         r = client.delete("/ues/10/bearers/9/traffic")
-        assert r.status_code == 200
+        assert r.status_code == 400
+
+    def test_stop_traffic_after_stop_returns_400(self, client):
+        """Ponowne zatrzymanie już zatrzymanego ruchu powinno zwrócić 400 (DEF-TRF-001)."""
+        client.post("/ues", json={"ue_id": 10})
+        client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 10.0})
+        client.delete("/ues/10/bearers/9/traffic")
+        r = client.delete("/ues/10/bearers/9/traffic")
+        assert r.status_code == 400
 
     def test_stop_traffic_ue_not_found(self, client):
         r = client.delete("/ues/99/bearers/9/traffic")
@@ -270,9 +324,30 @@ class TestStopAllTrafficForUE:
         assert r.status_code == 400
 
     def test_stop_all_no_active_traffic_still_returns_200(self, client):
+        """Stop-all na UE bez aktywnego ruchu zwraca 200 (w odróżnieniu od stop-single)."""
         client.post("/ues", json={"ue_id": 10})
         r = client.delete("/ues/10/traffic")
         assert r.status_code == 200
+
+    def test_stop_all_multiple_bearers(self, client):
+        """Stop-all zatrzymuje ruch na wszystkich bearerach (scenariusz z DEF-TRF-002)."""
+        client.post("/ues", json={"ue_id": 56})
+        client.post("/ues/56/bearers", json={"bearer_id": 4})
+        client.post("/ues/56/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 2.0})
+        client.post("/ues/56/bearers/4/traffic", json={"protocol": "udp", "Mbps": 3.0})
+        r = client.delete("/ues/56/traffic")
+        assert r.status_code == 200
+        assert r.json()["status"] == "traffic_stopped"
+
+    def test_stop_all_traffic_actually_stopped(self, client):
+        """Po stop-all ponowne stop-single na każdym bearerze zwraca 400."""
+        client.post("/ues", json={"ue_id": 10})
+        client.post("/ues/10/bearers", json={"bearer_id": 4})
+        client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 2.0})
+        client.post("/ues/10/bearers/4/traffic", json={"protocol": "udp", "Mbps": 3.0})
+        client.delete("/ues/10/traffic")
+        assert client.delete("/ues/10/bearers/9/traffic").status_code == 400
+        assert client.delete("/ues/10/bearers/4/traffic").status_code == 400
 
 
 # ---------------------------------------------------------------------------

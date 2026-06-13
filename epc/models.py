@@ -20,7 +20,7 @@ class ThroughputStats(BaseModel):
 
 
 class UEState(BaseModel):
-    ue_id: int = Field(ge=1, le=100)
+    ue_id: int = Field(ge=0, le=100)
     bearers: dict[int, BearerConfig] = {}
     stats: dict[int, ThroughputStats] = {}
 
@@ -35,7 +35,7 @@ class UEState(BaseModel):
 
 # Request body schemas (REST API)
 class AttachUERequest(BaseModel):
-    ue_id: int = Field(ge=1, le=100)
+    ue_id: int = Field(ge=0, le=100)
 
 
 class AddBearerRequest(BaseModel):
@@ -47,7 +47,7 @@ class StartTrafficRequest(BaseModel):
     Mbps: float | None = Field(default=None, gt=0, le=100)
     kbps: float | None = Field(default=None, gt=0, le=100_000)
     bps: float | None = Field(default=None, gt=0, le=100_000_000)
-    direction: str | None = Field(default=None, pattern="^(DL|UL)$")
+    direction: str | None = Field(default=None, pattern="^DL$")
 
     @model_validator(mode="after")
     def exactly_one_throughput(self):
