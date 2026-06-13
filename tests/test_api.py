@@ -251,11 +251,19 @@ class TestStopTraffic:
         assert r.status_code == 200
         assert r.json()["status"] == "traffic_stopped"
 
-    def test_stop_traffic_not_running_does_not_raise(self, client):
-        """Zatrzymanie ruchu, który nie jest aktywny, powinno zwrócić 200."""
+    def test_stop_traffic_not_running_returns_400(self, client):
+        """Zatrzymanie ruchu, który nie jest aktywny, powinno zwrócić 400 (DEF-TRF-001)."""
         client.post("/ues", json={"ue_id": 10})
         r = client.delete("/ues/10/bearers/9/traffic")
-        assert r.status_code == 200
+        assert r.status_code == 400
+
+    def test_stop_traffic_after_stop_returns_400(self, client):
+        """Ponowne zatrzymanie już zatrzymanego ruchu powinno zwrócić 400 (DEF-TRF-001)."""
+        client.post("/ues", json={"ue_id": 10})
+        client.post("/ues/10/bearers/9/traffic", json={"protocol": "tcp", "Mbps": 10.0})
+        client.delete("/ues/10/bearers/9/traffic")
+        r = client.delete("/ues/10/bearers/9/traffic")
+        assert r.status_code == 400
 
     def test_stop_traffic_ue_not_found(self, client):
         r = client.delete("/ues/99/bearers/9/traffic")

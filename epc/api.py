@@ -205,6 +205,8 @@ def stop_traffic(
     if not bearer:
         raise HTTPException(status_code=400, detail="Bearer not found")
     tm = get_traffic_manager(repo)
+    if not tm.is_running(ue_id, bearer_id):
+        raise HTTPException(status_code=400, detail="Traffic is not running")
     tm.stop(ue_id, bearer_id)
     bearer.active = False
     repo.update_bearer(ue_id, bearer)
