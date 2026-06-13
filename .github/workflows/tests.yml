@@ -37,3 +37,6 @@ jobs:
         if: always()
         with:
           files: test-results.xml
+          job_summary: true
+          check_run_annotations: all tests, skipped tests
+          comment_mode: always
